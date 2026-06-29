@@ -2,7 +2,7 @@
 
 **Disclaimer: This is not an official Google product.**
 
-Demand Led Growth (DLG) is a scalable, self-hosted budget and target optimization tool for Google Ads. It replaces the previous Sheets-based implementation, designed to meet the needs of large-scale advertisers and agencies.
+Demand Led Growth (DLG) is a scalable, self-hosted budget and target optimization tool for Google Ads. It replaces the previous [Sheets-based implementation of `dlg-tool`](https://github.com/google-marketing-solutions/dlg-tool), designed to meet the needs of large-scale advertisers and agencies.
 
 ## Overview
 
