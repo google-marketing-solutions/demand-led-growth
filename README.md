@@ -35,7 +35,7 @@ The solution runs entirely within your own Google Cloud Platform (GCP) project, 
 Before deploying the solution, ensure you have:
 
 1.  **A Google Cloud Project** with billing enabled. The user deploying the solution should have **Owner** (`roles/owner`) permissions on this project.
-2.  **Google Ads Access:** The Google account running the deployment must have at least **Read Only** access to the Google Ads MCC or individual accounts you want to analyze.
+2.  **Google Ads Access:** The Google account running the deployment must have at least **Standard** access to the Google Ads MCC or individual accounts you want to analyze.
 3.  **Looker Studio Template Access:** Request access to the dashboard template by joining the [demand-led-growth-template-readers](https://groups.google.com/g/demand-led-growth-template-readers) Google Group. **You must be a member of this group to copy the dashboard.**
 
 ## Deployment
