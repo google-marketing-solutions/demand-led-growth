@@ -1,12 +1,13 @@
 #!/bin/bash
-echo "=================================================="
-echo "🎉 Demand Led Growth - Setup Starting..."
-echo "=================================================="
 BOLD='\033[1m'
 CYAN='\033[1;36m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
+
+echo -e "${GREEN}=================================================="
+echo "🎉 Demand Led Growth - Setup Starting..."
+echo "==================================================${NC}"
 
 PROJECT_ID=$(gcloud config get-value project)
 CRON_SCHEDULE="0 2 * * *"
@@ -30,7 +31,10 @@ else
     echo "DEBUG: Region '$RAW_REGION' is invalid or unset. Defaulting to: '$LOCATION'"
 fi
 
-read -p "$(printf "${GREEN}${BOLD}To help with development and get usage stats, do you consent to sending an annonymouse tracking ping to our server to say you are installing the tool? (y/n):${NC} ")" confirm
+# ==========================================
+# TRACKING VERIFICATION
+# ==========================================
+read -p "$(printf "${CYAN}${BOLD}To help with development and get usage stats, do you consent to sending an anonymous tracking ping to our server to say you are installing the tool? (y/n):${NC} ")" confirm
 
 case "$confirm" in 
   ([yY] | [yY][eE][sS] ) 
@@ -41,6 +45,9 @@ case "$confirm" in
     ;;
 esac
 
+# ==========================================
+# SETUP QUESTIONS FOR THE USER
+# ==========================================
 while true; do
   read -p "$(printf "${CYAN}${BOLD}Enter an instance name (default: main): ${NC}")" INSTANCE_INPUT
   INSTANCE=${INSTANCE_INPUT:-main}
@@ -86,7 +93,7 @@ while true; do
 
   read -p "$(printf "${CYAN}${BOLD}Enter comma-separated Customer IDs:${NC} ")" ID_LIST
 
-  echo -e "\n${GREEN}${BOLD}Confirm this setup is correct?${NC}"
+  echo -e "\n${CYAN}${BOLD}Confirm this setup is correct?${NC}"
   echo "Instance Name: ${INSTANCE}"
   echo "Project ID: ${PROJECT_ID}"
   echo "Location: ${LOCATION}"
@@ -107,7 +114,7 @@ while true; do
   esac
 done
 
-echo "--- Starting automated FX Pipeline setup for project: ${PROJECT_ID}..."
+echo -e "${GREEN}--- Starting automated FX Pipeline setup for project: ${PROJECT_ID}...{$NC}"
 
 case "$confirm" in 
   ([yY] | [yY][eE][sS])
@@ -118,35 +125,34 @@ case "$confirm" in
 esac
 
 # ==========================================
-# Enable APIs
+# ENABLE APIs
 # ==========================================
 
-echo "--- Enabling required Google Cloud APIs..."
-if gcloud services list --enabled --filter="NAME:cloudfunctions.googleapis.com" --format="value(name)" &>/dev/null; then
-  echo "- APIs are already active. Skipping..."
-else
-  echo "- Turning on missing platform APIs..."
-  gcloud services enable artifactregistry.googleapis.com cloudfunctions.googleapis.com run.googleapis.com eventarc.googleapis.com cloudbuild.googleapis.com cloudscheduler.googleapis.com bigquery.googleapis.com --project="${PROJECT_ID}"
-fi
+echo -e "${GREEN}--- Enabling required Google Cloud APIs...${NC}"
+gcloud services enable artifactregistry.googleapis.com cloudfunctions.googleapis.com run.googleapis.com eventarc.googleapis.com cloudbuild.googleapis.com cloudscheduler.googleapis.com bigquery.googleapis.com --project="${PROJECT_ID}"
 
+# ==========================================
+# CREATE THE DATASET
+# ==========================================
 if bq show "$DATASET" > /dev/null 2>&1; then
-    echo "Dataset '$DATASET' already exists. Skipping creation..."
+    echo -e "${GREEN}Dataset '$DATASET' already exists. Skipping creation...${NC}"
 else
-    echo "Creating dataset '$DATASET'..."
+    echo -e "${GREEN}Creating dataset '$DATASET'...${NC}"
     bq mk --dataset --location="$LOCATION" "$PROJECT_ID:$DATASET"
 fi
 
+# ==========================================
+# SETUP BQ CONNECTORS FOR EACH ACCOUNT
+# ==========================================
 IFS=',' read -ra AD_IDS <<< "$ID_LIST"
 
 for CID in "${AD_IDS[@]}"; do
-    echo "--- Setting up Connectors for: $CID ---"
+    echo -e "${GREEN}--- Setting up Connectors for: $CID ---${NC}"
 
-    echo "Creating Standard Report Connector..."
     START_TIME=$(date -u -d "31 days ago" +"%Y-%m-%dT%H:%M:%SZ")
     END_TIME=$(date -u -d "yesterday" +"%Y-%m-%dT%H:%M:%SZ")
 
-    # 2. Standard Connector
-    echo "Creating Standard Report Connector..."
+    echo "- Creating Standard Report Connector..."
     STANDARD_OUTPUT=$(bq mk --transfer_config \
         --project_id="$PROJECT_ID" \
         --data_source=google_ads \
@@ -160,18 +166,15 @@ for CID in "${AD_IDS[@]}"; do
             \"table_filter\": \"Customer,Campaign,Budget,CampaignBasicStats\"
         }")
 
-    # Extract the config resource name from the output
-    # Expected output format: Transfer configuration 'projects/.../transferConfigs/...' successfully created.
     STANDARD_CONFIG=$(echo "$STANDARD_OUTPUT" | grep -o "projects/[^']*")
 
-    echo "Triggering 30-day manual backfill for Standard Connector..."
+    echo "- Triggering 30-day manual backfill for Standard Connector..."
     bq mk --transfer_run \
         --start_time="$START_TIME" \
         --end_time="$END_TIME" \
         "$STANDARD_CONFIG"
 
-    # 3. Custom Connector
-    echo "Creating Custom Report Connector..."
+    echo "- Creating Custom Report Connector..."
     CUSTOM_OUTPUT=$(bq mk --transfer_config \
         --project_id="$PROJECT_ID" \
         --data_source=google_ads \
@@ -191,7 +194,7 @@ for CID in "${AD_IDS[@]}"; do
                 \"CustomBudgetSettings\"
             ],
             \"custom_report_queries\": [
-                \"SELECT recommendation.resource_name, recommendation.type, recommendation.campaign, recommendation.campaigns, recommendation.campaign_budget_recommendation, recommendation.move_unused_budget_recommendation, recommendation.raise_target_cpa_recommendation, recommendation.lower_target_roas_recommendation, recommendation.impact FROM recommendation\",
+                \"SELECT recommendation.resource_name, recommendation.type, recommendation.campaign, recommendation.campaigns, recommendation.campaign_budget_recommendation, recommendation.marginal_roi_campaign_budget_recommendation, recommendation.forecasting_campaign_budget_recommendation, recommendation.move_unused_budget_recommendation, recommendation.raise_target_cpa_recommendation, recommendation.lower_target_roas_recommendation, recommendation.impact FROM recommendation\",
                 \"SELECT segments.date, bidding_strategy.id, bidding_strategy.name, bidding_strategy.type, bidding_strategy.target_cpa.target_cpa_micros, bidding_strategy.target_roas.target_roas, bidding_strategy.maximize_conversions.target_cpa_micros, bidding_strategy.maximize_conversion_value.target_roas FROM bidding_strategy\",
                 \"SELECT segments.date, accessible_bidding_strategy.id, accessible_bidding_strategy.name, accessible_bidding_strategy.type, accessible_bidding_strategy.owner_customer_id, accessible_bidding_strategy.target_cpa.target_cpa_micros, accessible_bidding_strategy.target_roas.target_roas, accessible_bidding_strategy.maximize_conversions.target_cpa_micros, accessible_bidding_strategy.maximize_conversion_value.target_roas FROM accessible_bidding_strategy\",
                 \"SELECT segments.date, campaign.id, campaign.target_cpa.target_cpa_micros, campaign.target_roas.target_roas, campaign.maximize_conversions.target_cpa_micros, campaign.maximize_conversion_value.target_roas, metrics.average_target_cpa_micros, metrics.average_target_roas, metrics.search_rank_lost_impression_share, metrics.search_budget_lost_impression_share, metrics.video_trueview_views FROM campaign\",
@@ -202,7 +205,7 @@ for CID in "${AD_IDS[@]}"; do
 
     CUSTOM_CONFIG=$(echo "$CUSTOM_OUTPUT" | grep -o "projects/[^']*")
 
-    echo "Triggering 30-day manual backfill for Custom Connector..."
+    echo "- Triggering 30-day manual backfill for Custom Connector..."
     bq mk --transfer_run \
         --start_time="$START_TIME" \
         --end_time="$END_TIME" \
@@ -210,9 +213,9 @@ for CID in "${AD_IDS[@]}"; do
 done
 
 # ==========================================
-# CREATE THE BIGQUERY SCHEMA
+# CREATE THE BIGQUERY SCHEMA FOR FX DATA
 # ==========================================
-echo "--- Checking and creating BigQuery table for FX data: ${FX_TARGET_TABLE}..."
+echo -e "${GREEN}--- Checking and creating BigQuery table for FX data: ${FX_TARGET_TABLE}...${NC}"
 
 # Check if table already exists, if not, create it
 if ! bq show --project_id="${PROJECT_ID}" "${DATASET}.${FX_TABLE_NAME}" &>/dev/null; then
@@ -227,14 +230,14 @@ else
 fi
 
 if [ ! -f "main.py" ] || [ ! -f "requirements.txt" ]; then
-  echo "- Error: Missing local deployment source files (main.py or requirements.txt)."
+  echo -e "${RED}- Error: Missing local deployment source files (main.py or requirements.txt).${NC}"
   exit 1
 fi
 
 # ==========================================
-# PREPARE THE STAGING DIRECTORY
+# PREPARE THE STAGING DIRECTORY FOR FX SCRIPT
 # ==========================================
-echo "--- Preparing deployment asset container folder..."
+echo -e "${GREEN}--- Preparing deployment asset container folder...${NC}"
 mkdir -p ./fx_tmp_deploy_dir
 
 # Copy your local standalone scripts into the isolated deployment target folder
@@ -246,11 +249,10 @@ cd ./fx_tmp_deploy_dir
 # ==========================================
 # CREATE PIPELINE IDENTITY & ROLES
 # ==========================================
-echo "--- Setting up dedicated service account for FX pipeline..."
+echo -e "${GREEN}--- Setting up dedicated service account for FX pipeline...${NC}"
 SA_NAME="bq-fx-pipeline-sa"
 FX_SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
-# Create the Service Account if it doesn't exist (Move to root briefly to run SA commands safely)
 if ! gcloud iam service-accounts describe "${FX_SA_EMAIL}" --project="${PROJECT_ID}" &>/dev/null; then
   gcloud iam service-accounts create "${SA_NAME}" \
     --project="${PROJECT_ID}" \
@@ -261,7 +263,7 @@ else
   echo "- Service account already exists. Skipping creation...."
 fi
 
-echo "🛡️ Adding required roles to Service Account..."
+echo "- Adding required roles to Service Account..."
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${FX_SA_EMAIL}" \
   --role="roles/bigquery.dataEditor" \
@@ -282,18 +284,18 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --role="roles/run.invoker" \
   --quiet >/dev/null
 
-echo "--- Service account roles added."
+echo -e "${GREEN}--- Service account roles added...${NC}"
 
 # ==========================================
-# DEPLOY THE CLOUD FUNCTION
+# DEPLOY THE CLOUD FUNCTION FOR FX DATA RUNS
 # ==========================================
-echo "--- Deploying 2nd-Gen Cloud Function (this may take 1-2 minutes)..."
+echo -e "${GREEN}--- Deploying 2nd-Gen Cloud Function (this may take 1-2 minutes)...${NC}"
 
 gcloud functions deploy "${FUNCTION_NAME}" \
   --project="${PROJECT_ID}" \
   --region="${REGION}" \
   --gen2 \
-  --runtime=python310 \
+  --runtime=python312 \
   --trigger-http \
   --entry-point=fetch_and_load_fx \
   --service-account="${FX_SA_EMAIL}" \
@@ -301,10 +303,10 @@ gcloud functions deploy "${FUNCTION_NAME}" \
   --set-env-vars=FX_TARGET_TABLE="${FX_TARGET_TABLE}",TARGET_CURRENCY="${TARGET_CURRENCY}" \
   --source=.
 
-# ------------------------------------------
+# ==========================================
 # FETCH THE ACCURATE FUNCTION URL
-# ------------------------------------------
-echo "--- Retrieving function endpoint URL..."
+# ==========================================
+echo -e "${GREEN}--- Retrieving function endpoint URL...${NC}"
 FUNCTION_URL=$(gcloud functions describe "${FUNCTION_NAME}" \
   --project="${PROJECT_ID}" \
   --region="${REGION}" \
@@ -312,20 +314,19 @@ FUNCTION_URL=$(gcloud functions describe "${FUNCTION_NAME}" \
   --format="value(serviceConfig.uri)")
 
 if [ -z "${FUNCTION_URL}" ]; then
-  echo "❌ Error: Failed to extract Cloud Function URL. Cannot proceed with Scheduler setup."
+  echo -e "${RED}Error: Failed to extract Cloud Function URL. Cannot proceed with Scheduler setup!${NC}"
   exit 1
 fi
 
 echo "- Found URL: ${FUNCTION_URL}"
 
-# Clean up and exit the temporary directory properly
 cd ..
 rm -rf ./fx_tmp_deploy_dir
 
 # ==========================================
-# CREATE AUTOMATED CLOUD SCHEDULER JOB
+# CREATE AUTOMATED CLOUD SCHEDULER JOB FOR DAILY FX FETCH
 # ==========================================
-echo "--- Setting up Cloud Scheduler Job..."
+echo -e "${GREEN}--- Setting up Cloud Scheduler Job for FX sync...${NC}"
 
 # Delete the scheduler job if it exists to avoid conflicts on script reruns
 gcloud scheduler jobs delete "${JOB_NAME}" --project="${PROJECT_ID}" --location="${REGION}" --quiet &>/dev/null || true
@@ -341,33 +342,72 @@ gcloud scheduler jobs create http "${JOB_NAME}" \
   --oidc-service-account-email="${FX_SA_EMAIL}" \
   --oidc-token-audience="${FUNCTION_URL}"
 
-seconds=30
-while [ $seconds -gt 0 ]; do
-   echo -ne "Waiting for scheduler to propagate... $seconds seconds remaining\r"
-   sleep 1
-   : $((seconds--))
+SLEEP_TIME=20
+MAX_ATTEMPTS=10
+ATTEMPT=1
+echo -e "${GREEN}--- Waiting for Cloud Scheduler job '{$JOB_NAME}' to be ready ---${NC}"
+
+while [ "${ATTEMPT}" -le "${MAX_ATTEMPTS}" ]; do
+    JOB_STATE=$(gcloud scheduler jobs describe "${JOB_NAME}" \
+        --location="${REGION}" \
+        --format="value(state)" \
+        2>/dev/null)
+
+    if [ "${JOB_STATE}" == "ENABLED" ]; then
+        echo "Success! Job is ENABLED. Triggering manual run..."
+        gcloud scheduler jobs run "${JOB_NAME}" --location="${REGION}" --quiet
+        echo "Job triggered successfully."
+        break
+    fi
+    
+    sleep "${SLEEP_TIME}"
+    ((ATTEMPT++))
 done
 
-echo "- Triggering initial sync..."
-gcloud scheduler jobs run "${JOB_NAME}" --location="${REGION}" --quiet
-
-echo "--- All data sources created. Waiting 30 seconds to ensure everything is created... ---"
-seconds=30
-while [ $seconds -gt 0 ]; do
-   echo -ne "Waiting... $seconds seconds remaining\r"
-   sleep 1
-   : $((seconds--))
-done
+if [ "${ATTEMPT}" -gt "${MAX_ATTEMPTS}" ]; then
+    echo -e "${RED}FATAL ERROR: Timed out after 10 attempts waiting for Cloud Scheduler job '${JOB_NAME}' to become ready. Review error logs and try the setup again.${NC}"
+    exit 1
+fi
 
 # ==========================================
-# Copy core query to scheduled queries
+# DATA CHECKS BEFORE CONTINUING TO ENSURE SCRIPT SUCCESS
+# ==========================================
+TABLE1_PREFIX="p_ads_CustomRecommendations_" #check table exists
+TABLE2_ID="${PROJECT_ID}:${DATASET}.historical_fx_rates_${INSTANCE}" #check data exists
+ATTEMPT=1
+MAX_ATTEMPTS=30
+SLEEP_TIME=60
+
+echo -e "${GREEN}--- Waiting for ${TABLE1_ID} to exist and ${TABLE2_ID} to populate ---${NC}"
+
+while [ "${ATTEMPT}" -le "${MAX_ATTEMPTS}" ]; do
+  if bq ls "${PROJECT_ID}:${DATASET}" 2>/dev/null | grep -q "${TABLE1_PREFIX}"; then
+    ROW_COUNT=$(bq show --format=json "${TABLE2_ID}" 2>/dev/null | jq -r '.numRows')
+
+    if [[ "${ROW_COUNT}" =~ ^[0-9]+$ ]] && [ "${ROW_COUNT}" -gt 0 ]; then
+      echo "Success! Table matching ${TABLE1_PREFIX}* exists and Table 2 contains ${ROW_COUNT} rows."
+      break
+    fi
+  fi
+  echo "Attempt ${ATTEMPT} of ${MAX_ATTEMPTS}: Tables not ready yet. Waiting ${SLEEP_TIME} seconds..."
+  sleep "${SLEEP_TIME}"
+  ((ATTEMPT++))
+done
+
+if [ "${ATTEMPT}" -gt "${MAX_ATTEMPTS}" ]; then
+  echo "ERROR: Timed out waiting for the tables to be ready. Exiting script."
+  exit 1
+fi
+
+# ==========================================
+# COPY SQL QUERY TO SCHEDULE
 # ==========================================
 export PROJECT_ID="$PROJECT_ID"
 export DATASET="$DATASET"
 export FX_TABLE_NAME="$FX_TABLE_NAME"
 SQL_QUERY=$(envsubst < "$SQL_FILE" | tr '\n' ' ' | sed 's/"/\\"/g' | sed 's/  */ /g')
 
-echo "--- Scheduling SQL transformation for Dataset: $DATASET ---"
+echo -e "${GREEN}--- Scheduling SQL transformation for Dataset: $DATASET ---${NC}"
 
 bq mk --transfer_config \
     --project_id="$PROJECT_ID" \
@@ -380,21 +420,37 @@ bq mk --transfer_config \
         \"query\": \"$SQL_QUERY\"
     }"
 
-echo "=================================================="
-echo "🎉 PIPELINE SUCCESS: Infrastructure setup complete!"
-echo "=================================================="
-echo "🎯 BigQuery Target:  ${FX_TARGET_TABLE}"
-echo "🌐 Function Endpoint: ${FUNCTION_URL}"
-echo "📅 Sync Schedule:     ${CRON_SCHEDULE} UTC daily"
-echo "=================================================="
+ATTEMPT=1
+MAX_ATTEMPTS=20
+SLEEP_TIME=20
 
-# Example of dynamically generating the link in your script
-TEMPLATE_URL="https://datastudio.google.com/c/reporting/a92e51b5-7b7f-4f00-a0e7-6fdc8f3e22c8/page/ICP2F/"
-PARAMS="params=%7B%22ds0.projectid%22%3A%22${PROJECT_ID}%22%2C%22ds0.datasetid%22%3A%22${DATASET}%22%7D"
+echo -e "${GREEN}--- Waiting for dlg_recommendations_dashboard to exist ---${NC}"
 
-echo "=================================================="
+while [ "${ATTEMPT}" -le "${MAX_ATTEMPTS}" ]; do
+  if bq show "${PROJECT_ID}:${DATASET}.dlg_recommendations_dashboard" >/dev/null 2>&1; then
+    echo "Success! Table exists."
+    break
+  fi
+
+  echo "Attempt ${ATTEMPT} of ${MAX_ATTEMPTS}: Table not found yet. Waiting ${SLEEP_TIME} seconds..."
+  sleep "${SLEEP_TIME}"
+  ((ATTEMPT++))
+done
+
+if [ "${ATTEMPT}" -gt "${MAX_ATTEMPTS}" ]; then
+  echo "ERROR: Timed out waiting for the table to be created. Review logs and try again."
+  exit 1
+fi
+
+# ==========================================
+# PROVIDE TEMPLATE LINK
+# ==========================================
+TEMPLATE_URL="https://datastudio.google.com/c/reporting/create?c.reportId=a92e51b5-7b7f-4f00-a0e7-6fdc8f3e22c8"
+PARAMS="&ds.ds0.connector=bigQuery&ds.ds0.projectId=${PROJECT_ID}&ds.ds0.type=TABLE&ds.ds0.datasetId=${DATASET}&ds.ds0.tableId=dlg_recommendations_dashboard"
+
+echo -e "${GREEN}=================================================="
 echo "🎉 FINAL STEP: Create a copy of the dashboard!"
 echo "=================================================="
-echo "👉 Click here to make a copy and configure your dashboard:"
-echo "${TEMPLATE_URL}?${PARAMS}"
-echo "=================================================="
+echo -e "👉 Click here to make a copy and configure your dashboard:${NC}"
+echo "${TEMPLATE_URL}&${PARAMS}"
+echo -e "${GREEN}==================================================${NC}"
