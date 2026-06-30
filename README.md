@@ -44,7 +44,13 @@ We recommend deploying the solution using **Google Cloud Shell**.
 
 1.  Open the [Google Cloud Console](https://console.cloud.google.com/) and select your target project.
 2.  Activate **Cloud Shell** by clicking the terminal icon in the top-right toolbar.
-3.  In the Cloud Shell terminal, run the following commands:
+3.  In the Cloud Shell terminal, run the following command:
+     ```bash
+    gcloud auth login
+    ```
+    Then following the link, sign in and copy the code to the terminal to finish this process. This is what will provide your GCP project with access to the Google Ads account data.
+
+4.  In the Cloud Shell terminal, run the following commands:
 
     ```bash
     git clone https://github.com/google-marketing-solutions/demand-led-growth.git
@@ -53,12 +59,17 @@ We recommend deploying the solution using **Google Cloud Shell**.
     ./install.sh
     ```
 
-4.  The interactive script will guide you through the setup:
-    *   Enabling the BigQuery and BigQuery Data Transfer APIs.
-    *   Configuring the Google Ads BigQuery Data Transfer Service.
-    *   Deploying the SQL views that process the data.
-5.  Upon successful completion, the script will output a customized **Looker Studio Linking API URL**.
-6.  Open the link in your browser. Looker Studio will open with the data sources already mapped to your BigQuery project. Click **Create Report** (or **Save**) in the top right to save the dashboard to your own account.
+5.  The interactive script will guide you through the setup:
+    *   Selecting your deployment location, your global currency and providing the MCC/Customer IDs you wish to add to your dashboard.
+    *   The script will then automatically:
+        1. Enable the required APIs.
+        2. Configuring the Google Ads BigQuery Data Transfer Service.
+        3. Create a scheduled fetch of the latest exchange rates.
+        4. Create the SQL views that process the data.
+        5. Schedule everything to run daily.
+        
+6.  Upon successful completion, the script will output a customized **Looker Studio Linking API URL**.
+7.  Open the link in your browser. Looker Studio will open with the data sources already mapped to your BigQuery project. Click **Create Report** (or **Save**) in the top right to save the dashboard to your own account.
 
 > [!NOTE]
 > The initial BigQuery Data Transfer might take up to 24 hours to populate. Your Looker Studio dashboard may display configuration or missing table errors until the first data transfer completes.
