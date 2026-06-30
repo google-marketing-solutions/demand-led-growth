@@ -170,6 +170,14 @@ WITH
     LEFT JOIN CampaignSettings cs ON c.campaign_id = cs.campaign_id
     QUALIFY ROW_NUMBER() OVER (PARTITION BY c.customer_id, c.campaign_id ORDER BY c._PARTITIONTIME DESC) = 1
   ),
+  CampaignsByBudget AS (
+    SELECT 
+      budgetId, 
+      customerId, 
+      STRING_AGG(campaignName, ', ') AS sourceCampaignNames
+    FROM ActiveCampaigns
+    GROUP BY budgetId, customerId
+  ),
   ActiveBudgets AS (
     SELECT
       customer_id AS customerId,
@@ -244,12 +252,23 @@ WITH
       SAFE_CAST(JSON_VALUE(recommendation_impact, '$.baseMetrics.videoViews') AS FLOAT64) AS baseVideoViews,
       SAFE_CAST(JSON_VALUE(recommendation_impact, '$.potentialMetrics.videoViews') AS FLOAT64) AS potentialVideoViews,
 
-      SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64) / 1000000 AS recommendationCurrentBudgetAmount,
-      SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64) / 1000000 AS recommendationNewBudgetAmount,
+      COALESCE(
+        SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_marginal_roi_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64)
+      ) / 1000000 AS recommendationCurrentBudgetAmount,
+
+      COALESCE(
+        SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_marginal_roi_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64)
+      ) / 1000000 AS recommendationNewBudgetAmount,
+      
       SAFE_CAST(JSON_VALUE(recommendation_raise_target_cpa_recommendation, '$.recommendedTargetMultiplier') AS FLOAT64) AS targetCpaMultiplier,
       SAFE_CAST(JSON_VALUE(recommendation_lower_target_roas_recommendation, '$.recommendedTargetMultiplier') AS FLOAT64) AS targetRoasMultiplier,
       
-      SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.recommendedBudgetAmountMicros') AS FLOAT64) / 1000000 AS moveBudgetAmount
+      SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.recommendedBudgetAmountMicros') AS FLOAT64) / 1000000 AS moveBudgetAmount,
+      SAFE_CAST(SPLIT(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.excessCampaignBudget'), '/')[SAFE_OFFSET(3)] AS INT64) AS moveBudgetSourceBudgetId
 
     FROM `${PROJECT_ID}.${DATASET}.p_ads_CustomRecommendations_*`
     WHERE recommendation_type IN (
@@ -260,11 +279,16 @@ WITH
       'RAISE_TARGET_CPA',
       'LOWER_TARGET_ROAS'
     )
-    AND DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 2 DAY)
+    AND DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE('UTC'), INTERVAL 30 DAY)
     QUALIFY ROW_NUMBER() OVER (PARTITION BY SPLIT(recommendation_campaign, '/')[SAFE_OFFSET(3)], recommendation_type ORDER BY _PARTITIONTIME DESC) = 1
   )
 
 SELECT
+  ROW_NUMBER() OVER (
+    PARTITION BY r.targetCampaignId 
+    ORDER BY CASE WHEN r.recommendationNewBudgetAmount IS NOT NULL THEN 0 ELSE 1 END, r.recommendationDate DESC, r.recommendationType
+  ) AS recommendationNumber,
+  
   cust.mccId,
   c.customerId AS accountId,
   cust.accountName,
@@ -348,8 +372,10 @@ SELECT
   r.baseConversions AS recommendationBaseConversions,
   r.potentialConversions AS recommendationPotentialConversions,
   r.baseConversionsValue AS recommendationBaseConversionsValue,
+  SAFE_DIVIDE(r.baseConversionsValue, fx.rate) AS recommendationBaseConversionsValueGlobal,
   r.potentialConversionsValue AS recommendationPotentialConversionsValue,
-  
+  SAFE_DIVIDE(r.potentialConversionsValue, fx.rate) AS recommendationPotentialConversionsValueGlobal,
+
   SAFE_DIVIDE(r.baseCost, r.baseConversions) AS recommendationBaseCpa,
   SAFE_DIVIDE(r.potentialCost, r.potentialConversions) AS recommendationPotentialCpa,
   SAFE_DIVIDE(r.baseConversionsValue, r.baseCost) AS recommendationBaseRoas,
@@ -375,12 +401,13 @@ SELECT
   SAFE_DIVIDE(r.baseCost , NULLIF(r.baseConversions, 0)) - SAFE_DIVIDE(r.potentialCost, NULLIF(r.potentialConversions, 0)) AS recommendationCpaDelta,
   SAFE_DIVIDE(r.baseConversionsValue, NULLIF(r.baseCost , 0)) - SAFE_DIVIDE(r.potentialConversionsValue, NULLIF(r.potentialCost, 0)) AS recommendationRoasDelta,
   r.moveBudgetAmount,
-  NULL AS moveBudgetSourceCampaigns,         
-  NULL AS moveBudgetSourceBudgetName,        
-  NULL AS moveBudgetSourceBudgetType,        
-  NULL AS moveBudgetSourceBudgetDeliveryMethod,
-  NULL AS moveBudgetSourceBudgetIsShared,
-  NULL AS moveBudgetSourceBudgetAmount
+  
+  cbb.sourceCampaignNames AS moveBudgetSourceCampaigns,         
+  sb.campaignBudgetName AS moveBudgetSourceBudgetName,        
+  sbs.campaignBudgetType AS moveBudgetSourceBudgetType,        
+  sb.campaignBudgetDeliveryMethod AS moveBudgetSourceBudgetDeliveryMethod,
+  sb.campaignBudgetIsShared AS moveBudgetSourceBudgetIsShared,
+  sb.campaignBudgetAmount AS moveBudgetSourceBudgetAmount
 
 FROM ParsedRecommendations r
 INNER JOIN ActiveCampaigns c ON r.targetCampaignId = CAST(c.campaignId AS STRING)
@@ -391,4 +418,7 @@ LEFT JOIN ActiveBudgets b ON c.budgetId = b.budgetId AND c.customerId = b.custom
 LEFT JOIN BudgetSettings bs ON b.budgetId = bs.budgetId
 LEFT JOIN PortfolioStrategies p ON c.strategyId = p.strategyId
 LEFT JOIN RollingMetrics m ON c.campaignId = m.campaign_id AND c.customerId = m.customerId
+LEFT JOIN ActiveBudgets sb ON r.moveBudgetSourceBudgetId = sb.budgetId AND c.customerId = sb.customerId
+LEFT JOIN BudgetSettings sbs ON r.moveBudgetSourceBudgetId = sbs.budgetId
+LEFT JOIN CampaignsByBudget cbb ON r.moveBudgetSourceBudgetId = cbb.budgetId AND c.customerId = cbb.customerId
 QUALIFY ROW_NUMBER() OVER (PARTITION BY r.recommendationId ORDER BY c.customerId) = 1;

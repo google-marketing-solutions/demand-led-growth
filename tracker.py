@@ -1,6 +1,7 @@
 import argparse
 import json
 import hashlib
+import uuid
 from tadau import Tadau
 
 
@@ -19,9 +20,9 @@ def main() -> None:
         measurement_id="G-Z2TKLQZ79K",
         opt_in=True,
         fixed_dimensions={
-            "app": "test_solution",
+            "app": "demand_led_growth",
             "is_agent_event": False,
-            "user_id": "3f8a9c2b-7e1d-4b0a-9f5c-8d3e2b1a0f9d",
+            "user_id": str(uuid.uuid4()),
             "non_personalized_ads": False
         }
     )
