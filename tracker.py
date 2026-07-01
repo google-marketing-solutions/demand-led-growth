@@ -20,7 +20,7 @@ def main() -> None:
         measurement_id="G-Z2TKLQZ79K",
         opt_in=True,
         fixed_dimensions={
-            "app": "demand_led_growth",
+            "app": "Demand-Led Growth",
             "is_agent_event": False,
             "user_id": str(uuid.uuid4()),
             "non_personalized_ads": False
