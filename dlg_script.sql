@@ -254,16 +254,16 @@ WITH
 
       COALESCE(
         SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_marginal_roi_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
         SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.currentBudgetAmountMicros') AS FLOAT64)
+        SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.currentBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_impact, '$.baseMetrics.costMicros') AS FLOAT64) / 7
       ) / 1000000 AS recommendationCurrentBudgetAmount,
 
       COALESCE(
         SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_marginal_roi_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
         SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.recommendedBudgetAmountMicros') AS FLOAT64)
+        SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.recommendedBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_impact, '$.potentialMetrics.costMicros') AS FLOAT64) / 7
       ) / 1000000 AS recommendationNewBudgetAmount,
       
       SAFE_CAST(JSON_VALUE(recommendation_raise_target_cpa_recommendation, '$.recommendedTargetMultiplier') AS FLOAT64) AS targetCpaMultiplier,
