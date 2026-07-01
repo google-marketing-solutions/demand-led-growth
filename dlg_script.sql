@@ -254,20 +254,21 @@ WITH
 
       COALESCE(
         SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_marginal_roi_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64)
+        SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.currentBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.currentBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_impact, '$.baseMetrics.costMicros') AS FLOAT64) / 7
       ) / 1000000 AS recommendationCurrentBudgetAmount,
 
       COALESCE(
         SAFE_CAST(JSON_VALUE(recommendation_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_marginal_roi_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
-        SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64)
+        SAFE_CAST(JSON_VALUE(recommendation_forecasting_campaign_budget_recommendation, '$.recommendedBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.recommendedBudgetAmountMicros') AS FLOAT64),
+        SAFE_CAST(JSON_VALUE(recommendation_impact, '$.potentialMetrics.costMicros') AS FLOAT64) / 7
       ) / 1000000 AS recommendationNewBudgetAmount,
       
       SAFE_CAST(JSON_VALUE(recommendation_raise_target_cpa_recommendation, '$.recommendedTargetMultiplier') AS FLOAT64) AS targetCpaMultiplier,
       SAFE_CAST(JSON_VALUE(recommendation_lower_target_roas_recommendation, '$.recommendedTargetMultiplier') AS FLOAT64) AS targetRoasMultiplier,
       
-      SAFE_CAST(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.budgetRecommendation.recommendedBudgetAmountMicros') AS FLOAT64) / 1000000 AS moveBudgetAmount,
       SAFE_CAST(SPLIT(JSON_VALUE(recommendation_move_unused_budget_recommendation, '$.excessCampaignBudget'), '/')[SAFE_OFFSET(3)] AS INT64) AS moveBudgetSourceBudgetId
 
     FROM `${PROJECT_ID}.${DATASET}.p_ads_CustomRecommendations_*`
@@ -400,7 +401,6 @@ SELECT
   SAFE_DIVIDE(m.cost30Days, NULLIF(m.conversions30Days, 0)) - COALESCE(cm.avgTargetCpa30Days, p.targetCpa, cm.campaignTargetCpa) AS targetCpaDelta,
   SAFE_DIVIDE(r.baseCost , NULLIF(r.baseConversions, 0)) - SAFE_DIVIDE(r.potentialCost, NULLIF(r.potentialConversions, 0)) AS recommendationCpaDelta,
   SAFE_DIVIDE(r.baseConversionsValue, NULLIF(r.baseCost , 0)) - SAFE_DIVIDE(r.potentialConversionsValue, NULLIF(r.potentialCost, 0)) AS recommendationRoasDelta,
-  r.moveBudgetAmount,
   
   cbb.sourceCampaignNames AS moveBudgetSourceCampaigns,         
   sb.campaignBudgetName AS moveBudgetSourceBudgetName,        
