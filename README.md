@@ -74,6 +74,76 @@ We recommend deploying the solution using **Google Cloud Shell**.
 > [!NOTE]
 > The initial BigQuery Data Transfer might take up to 24 hours to populate. Your Looker Studio dashboard may display configuration or missing table errors until the first data transfer completes.
 
+## Frequently Asked Questions (FAQ)
+
+### General
+
+#### Q: What is the difference between dlg-tool (aka v1) and DLG (aka v2)?
+**A:** Dlg-tool (available in the [dlg-tool repository](https://github.com/google-marketing-solutions/dlg-tool)) was a Google Sheets-based solution powered by Google Ads Scripts. It was easy to set up but faced scalability limits (e.g., the 30-minute script execution limit and Sheet cell limits) when handling large accounts or multiple MCCs. 
+
+Demand Led Growth (v2) is a **GCP-based, self-hosted solution**. By moving the data pipeline to BigQuery and using the BigQuery Data Transfer Service (BQDT), it can scale to handle hundreds of accounts and millions of rows of data without timeouts.
+
+#### Q: Does this tool make changes to my Google Ads campaigns?
+**A:** **No.** DLG is a reporting-only tool. It identifies budget and target constraints and estimates potential uplifts, but it does not make any changes to your Google Ads settings.
+
+#### Q: How is my data protected?
+**A:** Because DLG v2 is **self-hosted**, all your Google Ads data is ingested, stored, and processed within your own Google Cloud Platform (GCP) project. You retain full ownership and control over your data and access permissions via GCP IAM.
+
+---
+
+### Cost & Performance
+
+#### Q: How much does it cost to run DLG v2 on GCP?
+**A:** DLG v2 runs entirely within your own GCP project. While you may be billed for Google Cloud services (specifically BigQuery storage and query usage), the data volume for most advertisers is small enough that **costs often fall within the GCP Free Tier** (which includes 10 GB of free storage and 1 TB of free query data processing per month). 
+
+For more details, see the [GCP Free Tier limits](https://cloud.google.com/free).
+
+#### Q: Can I customize the Looker Studio dashboard?
+**A:** **Yes.** Once you copy the Looker Studio template and connect it to your BigQuery views, you have full edit rights to customize the visualizations, add new charts, or change the branding.
+
+---
+
+### Features
+
+#### Q: How does multi-currency support work?
+**A:** DLG v2 automatically handles campaigns running in different currencies. During the BigQuery setup, you can define a single reference currency. The SQL views will automatically convert all cost and spend metrics into this reference currency using daily exchange rates.
+
+---
+
+## Troubleshooting
+
+### Data Ingestion (BigQuery Data Transfer Service)
+
+#### Issue: BQDT transfer fails or shows "Permission Denied"
+*   **Cause:** The user who configured the BQDT transfer does not have sufficient permissions.
+*   **Resolution:** Ensure the configuring user has:
+    1.  `Admin` or `Standard` access to the target Google Ads MCC or accounts.
+    2.  `BigQuery Admin` and `BigQuery Data Transfer Service Admin` roles in the GCP project.
+
+#### Issue: The transfer completed, but BigQuery tables are empty
+*   **Cause:** It can take some time for the initial backfill to complete, or the selected Google Ads accounts may not have had active campaigns during the backfill period.
+*   **Resolution:** Check the BQDT run history in the GCP Console to ensure the run succeeded. You can also trigger a manual backfill for a specific date range if needed.
+
+---
+
+### Dashboard (Looker Studio)
+
+#### Issue: Dashboard shows "Data Set Configuration Error" or "System Error"
+*   **Cause:** Looker Studio cannot access the underlying BigQuery views, or the views were not created correctly.
+*   **Resolution:**
+    1.  Verify that the SQL views (e.g., `vw_LimitedBudgets`) exist in your BigQuery dataset.
+    2.  Ensure the credentials used in the Looker Studio data source have at least `BigQuery Data Viewer` and `BigQuery Job User` roles on the GCP project.
+    3.  Try editing the data source in Looker Studio and clicking **Reconnect**.
+
+#### Issue: Dashboard data seems outdated compared to the Google Ads UI
+*   **Cause:** BQDT updates data once per day. There may be up to a 24-hour lag. Additionally, conversion data in Google Ads can be subject to conversion delay.
+*   **Resolution:** Check the "Last Updated" timestamp in your BQDT run history. Expect minor discrepancies between the dashboard and the live UI due to this daily refresh cycle.
+
+#### Issue: Dashboard pages are slow to load
+*   **Cause:** Looker Studio might be querying raw BQDT tables instead of the optimized SQL views.
+*   **Resolution:** Ensure that your Looker Studio report is connected to the **SQL Views** provided in the deployment package, and not directly to the raw tables (which start with `p_`).
+
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
