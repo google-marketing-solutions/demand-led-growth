@@ -131,7 +131,7 @@ For more details, see the [GCP Free Tier limits](https://cloud.google.com/free).
 #### Issue: Dashboard shows "Data Set Configuration Error" or "System Error"
 *   **Cause:** Looker Studio cannot access the underlying BigQuery views, or the views were not created correctly.
 *   **Resolution:**
-    1.  Verify that the SQL views (e.g., `vw_LimitedBudgets`) exist in your BigQuery dataset.
+    1.  Verify that the BigQuery tables (e.g., `dlg_recommendations_dashboard`) exist in your BigQuery dataset.
     2.  Ensure the credentials used in the Looker Studio data source have at least `BigQuery Data Viewer` and `BigQuery Job User` roles on the GCP project.
     3.  Try editing the data source in Looker Studio and clicking **Reconnect**.
 
