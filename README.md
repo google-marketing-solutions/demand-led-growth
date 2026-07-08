@@ -15,7 +15,7 @@ By leveraging Google Cloud Platform (GCP), DLG can handle large data volumes acr
 *   **Scalability:** Built to handle data from hundreds of Google Ads accounts and millions of rows of performance data.
 *   **Multi-MCC & Multi-Account Support:** Aggregate and filter your data across multiple MCC IDs and individual accounts within a single dashboard.
 *   **Multi-Currency Aggregation:** Automatically convert and aggregate financial metrics (spend, potential cost increase) from different currencies into a single reference currency of your choice, using exchange rates in BigQuery.
-*   **Actionable Visualizations:** A Looker Studio dashboard featuring:
+*   **Actionable Visualizations:** A Data Studio dashboard featuring:
     *   "Limited by Budget" campaigns with estimated weekly uplift (conversions, conversion value).
     *   Spend vs. Budget comparison.
     *   Budget reallocation opportunities (moving unused budget to constrained campaigns).
@@ -27,7 +27,7 @@ The solution runs entirely within your own Google Cloud Platform (GCP) project, 
 
 1.  **Data Ingestion:** BigQuery Data Transfer Service (BQDT) for Google Ads automatically imports your daily reports.
 2.  **Storage & Processing:** BigQuery stores the data and runs SQL views to aggregate and process it (including currency conversion).
-3.  **Visualization:** Looker Studio connects directly to your BigQuery views to display the interactive dashboard.
+3.  **Visualization:** Data Studio connects directly to your BigQuery views to display the interactive dashboard.
 
 
 ## Prerequisites
@@ -36,7 +36,7 @@ Before deploying the solution, ensure you have:
 
 1.  **A Google Cloud Project** with billing enabled. The user deploying the solution should have **Owner** (`roles/owner`) permissions on this project.
 2.  **Google Ads Access:** The Google account running the deployment must have at least **Standard** access to the Google Ads MCC or individual accounts you want to analyze.
-3.  **Looker Studio Template Access:** Request access to the dashboard template by joining the [demand-led-growth-template-readers](https://groups.google.com/g/demand-led-growth-template-readers) Google Group. **You must be a member of this group to copy the dashboard.**
+3.  **Data Studio Template Access:** Request access to the dashboard template by joining the [demand-led-growth-template-readers](https://groups.google.com/g/demand-led-growth-template-readers) Google Group. **You must be a member of this group to copy the dashboard.**
 
 ## Deployment
 
@@ -68,11 +68,11 @@ We recommend deploying the solution using **Google Cloud Shell**.
         4. Create the SQL views that process the data.
         5. Schedule everything to run daily.
         
-6.  Upon successful completion, the script will output a customized **Looker Studio Linking API URL**.
-7.  Open the link in your browser. Looker Studio will open with the data sources already mapped to your BigQuery project. Click **Create Report** (or **Save**) in the top right to save the dashboard to your own account.
+6.  Upon successful completion, the script will output a customized **Data Studio Linking API URL**.
+7.  Open the link in your browser. Data Studio will open with the data sources already mapped to your BigQuery project. Click **Create Report** (or **Save**) in the top right to save the dashboard to your own account.
 
 > [!NOTE]
-> The initial BigQuery Data Transfer might take up to 24 hours to populate. Your Looker Studio dashboard may display configuration or missing table errors until the first data transfer completes.
+> The initial BigQuery Data Transfer might take up to 24 hours to populate. Your Data Studio dashboard may display configuration or missing table errors until the first data transfer completes.
 
 ## Frequently Asked Questions (FAQ)
 
@@ -98,8 +98,8 @@ Demand Led Growth (v2) is a **GCP-based, self-hosted solution**. By moving the d
 
 For more details, see the [GCP Free Tier limits](https://cloud.google.com/free).
 
-#### Q: Can I customize the Looker Studio dashboard?
-**A:** **Yes.** Once you copy the Looker Studio template and connect it to your BigQuery views, you have full edit rights to customize the visualizations, add new charts, or change the branding.
+#### Q: Can I customize the Data Studio dashboard?
+**A:** **Yes.** Once you copy the Data Studio template and connect it to your BigQuery views, you have full edit rights to customize the visualizations, add new charts, or change the branding.
 
 ---
 
@@ -126,22 +126,22 @@ For more details, see the [GCP Free Tier limits](https://cloud.google.com/free).
 
 ---
 
-### Dashboard (Looker Studio)
+### Dashboard (Data Studio)
 
 #### Issue: Dashboard shows "Data Set Configuration Error" or "System Error"
-*   **Cause:** Looker Studio cannot access the underlying BigQuery views, or the views were not created correctly.
+*   **Cause:** Data Studio cannot access the underlying BigQuery views, or the views were not created correctly.
 *   **Resolution:**
     1.  Verify that the BigQuery tables (e.g., `dlg_recommendations_dashboard`) exist in your BigQuery dataset.
-    2.  Ensure the credentials used in the Looker Studio data source have at least `BigQuery Data Viewer` and `BigQuery Job User` roles on the GCP project.
-    3.  Try editing the data source in Looker Studio and clicking **Reconnect**.
+    2.  Ensure the credentials used in the Data Studio data source have at least `BigQuery Data Viewer` and `BigQuery Job User` roles on the GCP project.
+    3.  Try editing the data source in Data Studio and clicking **Reconnect**.
 
 #### Issue: Dashboard data seems outdated compared to the Google Ads UI
 *   **Cause:** BQDT updates data once per day. There may be up to a 24-hour lag. Additionally, conversion data in Google Ads can be subject to conversion delay.
 *   **Resolution:** Check the "Last Updated" timestamp in your BQDT run history. Expect minor discrepancies between the dashboard and the live UI due to this daily refresh cycle.
 
 #### Issue: Dashboard pages are slow to load
-*   **Cause:** Looker Studio might be querying raw BQDT tables instead of the optimized SQL views.
-*   **Resolution:** Ensure that your Looker Studio report is connected to the **SQL Views** provided in the deployment package, and not directly to the raw tables (which start with `p_`).
+*   **Cause:** Data Studio might be querying raw BQDT tables instead of the optimized SQL views.
+*   **Resolution:** Ensure that your Data Studio report is connected to the **SQL Views** provided in the deployment package, and not directly to the raw tables (which start with `p_`).
 
 
 ## Contributing
