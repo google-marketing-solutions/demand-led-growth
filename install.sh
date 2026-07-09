@@ -157,7 +157,7 @@ for CID in "${AD_IDS[@]}"; do
         --project_id="$PROJECT_ID" \
         --data_source=google_ads \
         --target_dataset="$DATASET" \
-        --display_name="Standard_DLB_$CID" \
+        --display_name="Standard_DLG_$CID" \
         --time_zone="$USER_TIMEZONE" \
         --schedule="every day 03:00" \
         --refresh_window_days=30 \
@@ -179,7 +179,7 @@ for CID in "${AD_IDS[@]}"; do
         --project_id="$PROJECT_ID" \
         --data_source=google_ads \
         --target_dataset="$DATASET" \
-        --display_name="Custom_DLB_$CID" \
+        --display_name="Custom_DLG_$CID" \
         --time_zone="$USER_TIMEZONE" \
         --schedule="every day 03:00" \
         --refresh_window_days=30 \
