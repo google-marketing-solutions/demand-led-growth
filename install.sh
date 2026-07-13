@@ -145,7 +145,7 @@ fi
 # SETUP BQ CONNECTORS FOR EACH ACCOUNT
 # ==========================================
 IFS=',' read -ra AD_IDS <<< "$ID_LIST"
-
+AD_IDS=("${AD_IDS[@]// /}")
 for CID in "${AD_IDS[@]}"; do
     echo -e "${GREEN}--- Setting up Connectors for: $CID ---${NC}"
 
