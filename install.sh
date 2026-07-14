@@ -7,7 +7,7 @@ NC='\033[0m'
 
 echo -e "${GREEN}=================================================="
 echo "🎉 Demand Led Growth - Setup Starting..."
-echo "==================================================${NC}"
+echo -e "==================================================${NC}"
 
 PROJECT_ID=$(gcloud config get-value project)
 CRON_SCHEDULE="0 2 * * *"
