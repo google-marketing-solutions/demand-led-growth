@@ -29,7 +29,7 @@ def main() -> None:
     event_id=hashlib.sha256(project_id.encode()).hexdigest()
     tadau.send_events([
         {
-            "name": "DEPLOYMENT",
+            "name": "SOLUTION_USAGE",
             "external_event_id": event_id,
             "th_google_ads_customer_id": args.customer_ids,
         }
