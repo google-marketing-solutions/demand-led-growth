@@ -5,14 +5,18 @@
 ---
 ### ⚠️ Version Selection Notice (Which version should you deploy?)
 
-- **Enterprise (V2) THIS VERSION:** Upgraded specifically to support larger accounts and multi-MCC enterprise use cases (handling thousands of accounts and multi-currency aggregation). Requires Google Cloud Platform (GCP). [Github](https://github.com/google-marketing-solutions/demand-led-growth)
-- **Light (V1):** Choose this if your customer prefers a lighter deployment without GCP requirements (runs via Apps Script). [Github](https://github.com/google-marketing-solutions/dlg-tool)
+- **Ads Script Version:** Choose this if your customer prefers a deployment without GCP requirements (runs via Ads Script and Google Sheet). ([Github](https://github.com/google-marketing-solutions/dlg-tool))
+- **Google Cloud Version:** Choose this if your customer has below needs or limitations ([Github](https://github.com/google-marketing-solutions/demand-led-growth))
+    - Customers that has more than 8 MCCs
+    - Cannot use Google Sheets (Due to policies restricting ads data storing in Google Sheets or running Google Ads Scripts)
+    - Large number of CIDs (~2000)
 
-### 🚀 Key Benefits of the Enterprise (V2) option
+### 🚀 Feature Parity (Below features are only available in Ads Script Version)
 
-1. **Enterprise Scaling:** Bypasses script limits by using BigQuery Connectors to process millions of rows daily across 1,000+ accounts.
-2. **Multi-MCC Support:** Aggregates and filters data from multiple MCC IDs and individual accounts into a single dashboard.
-3. **Multi-Currency Aggregation:** Automatically converts varying account currencies into a single reference currency using daily-refreshed exchange rates.
+- Enhanced support for Shared Budgets and Bidding Portfolios
+- Budget reallocation opportunities: display current efficiency targets or Origin & Destination campaigns
+- Built-in compliance triggers for EC remedy (allowing easy exclusion of shopping feed-based campaigns via a checkbox)
+- Improved formatting & labeling for smoother user experience
 ---
 
 Demand Led Growth (DLG) is a scalable, self-hosted budget and target optimization tool for Google Ads. It replaces the previous [Sheets-based implementation of `dlg-tool`](https://github.com/google-marketing-solutions/dlg-tool), designed to meet the needs of large-scale advertisers and agencies.
